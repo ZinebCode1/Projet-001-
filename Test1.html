@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application de Traduction Vocal Tifinagh</title>
+    <!-- Intégration de Bootstrap (ajustez le chemin selon votre configuration) -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Traduction Vocal </h1>
+        <button class="btn btn-primary" onclick="startRecording()">Commencer </button>
+        <button class="btn btn-secondary ml-2" onclick="switchLanguage()">Switch</button>
+        <br><br>
+        <div class="row">
+            <div class="col">
+                <label for="spokenWord">Mot Prononcé:</label>
+                <input type="text" class="form-control" id="spokenWord" readonly>
+            </div>
+            <div class="col">
+                <label for="translatedWord">Mot Traduit:</label>
+                <input type="text" class="form-control" id="translatedWord" readonly>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var language = "arabe"; // Langue par défaut
+        var currentInput = "spokenWord"; // Input actuellement actif
+
+        function switchLanguage() {
+            if (language === "arabe") {
+                language = "tifinagh";
+            } else {
+                language = "arabe";
+            }
+            console.log("Switched to " + language);
+            // Changer le champ de texte actif
+            currentInput = (currentInput === "spokenWord") ? "translatedWord" : "spokenWord";
+            document.getElementById(currentInput).focus(); // Mettre le focus sur le nouveau champ de texte
+        }
+
+        function startRecording() {
+            // Demander la permission à l'utilisateur pour accéder au microphone
+            navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function(stream) {
+                // Utiliser l'API de reconnaissance vocale pour écouter le discours
+                var recognition = new window.webkitSpeechRecognition();
+                recognition.lang = "ar-SA"; // Langue française
+                recognition.start();
+                
+                // Quand la reconnaissance est terminée, récupérer le texte reconnu
+                recognition.onresult = function(event) {
+                    var speechResult = event.results[0][0].transcript;
+                    document.getElementById(currentInput).value = speechResult; // Mettre le texte dans le champ de texte actif
+                    // Envoyer le mot reconnu au serveur PHP avec la langue sélectionnée
+                    var xhr = new XMLHttpRequest();
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState == XMLHttpRequest.DONE) {
+                            if (xhr.status == 200) {
+                                // Afficher le résultat dans le champ de texte anglais
+                                var otherInput = (currentInput === "spokenWord") ? "translatedWord" : "spokenWord";
+                                document.getElementById(otherInput).value = xhr.responseText;
+                            } else {
+                                console.error(xhr.responseText);
+                            }
+                        }
+                    };
+                    xhr.open("GET", "process.php?word=" + encodeURIComponent(speechResult) + "&language=" + language, true);
+                    xhr.send();
+                }
+            })
+            .catch(function(err) {
+                console.error('Erreur :', err);
+            });
+        }
+    </script>
+</body>
+</html>
